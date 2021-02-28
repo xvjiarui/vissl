@@ -7,7 +7,7 @@ from typing import List
 import torch
 import torch.nn as nn
 import torchvision.models as models
-from torchvision.models.resnet import Bottleneck
+from torchvision.models.resnet import Bottleneck, BasicBlock
 from vissl.models.model_helpers import (
     Flatten,
     _get_norm,
@@ -20,6 +20,7 @@ from vissl.utils.hydra_config import AttrDict
 
 # For more depths, add the block config here
 BLOCK_CONFIG = {
+    18: (2, 2, 2, 2),
     50: (3, 4, 6, 3),
     101: (3, 4, 23, 3),
     152: (3, 8, 36, 3),
@@ -28,6 +29,7 @@ BLOCK_CONFIG = {
 
 
 class SUPPORTED_DEPTHS(int, Enum):
+    RN18 = 18
     RN50 = 50
     RN101 = 101
     RN152 = 152
@@ -85,8 +87,9 @@ class ResNeXt(nn.Module):
             f"w{self.width_multiplier}-{self._norm_layer.__name__}"
         )
 
+        building_block = Bottleneck if self.depth not in [18, 34] else BasicBlock
         model = models.resnet.ResNet(
-            block=Bottleneck,
+            block=building_block ,
             layers=(n1, n2, n3, n4),
             zero_init_residual=self.zero_init_residual,
             groups=self.groups,
@@ -113,9 +116,9 @@ class ResNeXt(nn.Module):
         model_relu1 = model.relu
         model_maxpool = model.maxpool
         model_avgpool = model.avgpool
-        model_layer1 = model._make_layer(Bottleneck, dim_inner, n1)
-        model_layer2 = model._make_layer(Bottleneck, dim_inner * 2, n2, stride=2)
-        model_layer3 = model._make_layer(Bottleneck, dim_inner * 4, n3, stride=2)
+        model_layer1 = model._make_layer(building_block, dim_inner, n1)
+        model_layer2 = model._make_layer(building_block, dim_inner * 2, n2, stride=2)
+        model_layer3 = model._make_layer(building_block, dim_inner * 4, n3, stride=2)
 
         # For some models like Colorization https://arxiv.org/abs/1603.08511,
         # due to the higher spatial resolution desired for pixel wise task, we
@@ -123,7 +126,7 @@ class ResNeXt(nn.Module):
         # behavior so support only those.
         safe_stride = SUPPORTED_L4_STRIDE(self.trunk_config.LAYER4_STRIDE)
         model_layer4 = model._make_layer(
-            Bottleneck, dim_inner * 8, n4, stride=safe_stride
+            building_block, dim_inner * 8, n4, stride=safe_stride
         )
 
         # we mapped the layers of resnet model into feature blocks to facilitate

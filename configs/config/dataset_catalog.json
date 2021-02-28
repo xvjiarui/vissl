@@ -1,7 +1,7 @@
 {
     "imagenet1k_folder": {
-        "train": ["<img_path>", "<lbl_path>"],
-        "val": ["<img_path>", "<lbl_path>"]
+        "train": ["data/imagenet/2012/train", "<lbl_path>"],
+        "val": ["data/imagenet/2012/val", "<lbl_path>"]
     },
     "imagenette_160_folder": {
         "train": ["<img_path>", "<lbl_path>"],
